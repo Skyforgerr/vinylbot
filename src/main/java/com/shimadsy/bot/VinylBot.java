@@ -37,13 +37,13 @@ public class VinylBot extends TelegramLongPollingBot {
     
     private void handleMessage(Message message) throws TelegramApiException, SQLException {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        Statement chatStatement = connection.createStatement();
+        chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + message.getText() + "');");
         if(message.hasText() && message.hasEntities()){
             Optional<MessageEntity> commandEntity = message.getEntities().stream().filter(e -> "bot_command".equals(e.getType())).findFirst();
             if (commandEntity.isPresent()){
                 String command = message.getText().substring(commandEntity.get().getOffset(), commandEntity.get().getLength());
                 Long chatId = message.getChatId();
-                Statement chatStatement = connection.createStatement();
-                chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + chatId + "', '" + message.getText() + "');");
 
                 if (command.equals("/get_vinyls")){
                     Statement statement = connection.createStatement();
@@ -53,6 +53,7 @@ public class VinylBot extends TelegramLongPollingBot {
                         result = result + "\n" + resultSet.getString("name");
                     }
                     execute(SendMessage.builder().chatId(message.getChatId().toString()).text(result).build());
+                    chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + result + "');");
                 }else if (command.equals("/get_info")){
                     states.put(chatId, "info");
                     execute(SendMessage.builder().chatId(chatId.toString()).text("Введите название пластинки для вывода дополнительной информации:").build());
