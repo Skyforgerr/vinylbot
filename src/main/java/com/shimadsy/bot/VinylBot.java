@@ -39,61 +39,72 @@ public class VinylBot extends TelegramLongPollingBot {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
         Statement chatStatement = connection.createStatement();
         chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + message.getText() + "');");
-        if(message.hasText() && message.hasEntities()){
-            Optional<MessageEntity> commandEntity = message.getEntities().stream().filter(e -> "bot_command".equals(e.getType())).findFirst();
-            if (commandEntity.isPresent()){
-                String command = message.getText().substring(commandEntity.get().getOffset(), commandEntity.get().getLength());
-                Long chatId = message.getChatId();
+        String command = message.getText();
+        Long chatId = message.getChatId();
 
-                if (command.equals("/get_vinyls")){
-                    Statement statement = connection.createStatement();
-                    String result = "";
-                    ResultSet resultSet = statement.executeQuery("SELECT name FROM vinyl");
-                    while (resultSet.next()){
-                        result = result + "\n" + resultSet.getString("name");
-                    }
-                    execute(SendMessage.builder().chatId(message.getChatId().toString()).text(result).build());
-                    chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + result + "');");
-                }else if (command.equals("/get_info")){
-                    states.put(chatId, "info");
-                    execute(SendMessage.builder().chatId(chatId.toString()).text("Введите название пластинки для вывода дополнительной информации:").build());
-                }else if (command.equals("/add_vinyl")) {
-                    states.put(chatId, "add");
-                    execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Вы выбрали add_vinyl").build());
-                }else if(states.containsKey(chatId)){
-                    Update update = new Update();
-                    if (states.get(chatId).equals("info")){
-                        execute(SendMessage.builder().chatId(message.getChatId().toString()).text(searchForVinyl(update.getMessage().getText())).build());
-                        states.remove(chatId);
-                    }else if (states.get(chatId).equals("add")){
-                        addVinyl(update.getMessage().getText());
-                        execute(SendMessage.builder().chatId(chatId.toString()).text("Новая пластинка добавлена").build());
-                        states.remove(chatId);
-                    }
-                }else{
-                    execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Неизвестная команда").build());
-                }
+        if (command.equals("/get_vinyls")){         //вывод списка всех пластинок
+            Statement statement = connection.createStatement();
+            String result = "";
+            ResultSet resultSet = statement.executeQuery("SELECT name FROM vinyl");
+            while (resultSet.next()){
+                result = result + "\n" + resultSet.getString("name");
             }
+            execute(SendMessage.builder().chatId(message.getChatId().toString()).text(result).build());
+            chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + result + "');");
+        }else if (command.equals("/get_info")){     //вывод информации об одной пластинке
+            states.put(chatId, "info");
+            execute(SendMessage.builder().chatId(chatId.toString()).text("Введите название пластинки для вывода дополнительной информации:").build());
+            chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Введите название пластинки для вывода дополнительной информации:" + "');");
+        }else if (command.equals("/add_vinyl")) {   //добавление пластинки
+            states.put(chatId, "add");
+            execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Введите через запятую название, описание, цену, год, лейбл").build());
+            chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Введите через запятую название, описание, цену, год, лейбл" + "');");
+        }else if(states.containsKey(chatId)){
+            Update update = new Update();
+            if (states.get(chatId).equals("info")){
+                execute(SendMessage.builder().chatId(message.getChatId().toString()).text(searchForVinyl(message.getText(), message)).build());
+                states.remove(chatId);
+            }else if (states.get(chatId).equals("add")){
+                addVinyl(message.getText());
+                execute(SendMessage.builder().chatId(chatId.toString()).text("Новая пластинка добавлена").build());
+                chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Новая пластинка добавлена" + "');");
+                states.remove(chatId);
+            }
+        }else{
+            execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Неизвестная команда").build());
         }
     }
-    public String searchForVinyl(String name) throws SQLException {
-        Update update = new Update();
+
+    public String searchForVinyl(String name, Message message) throws SQLException {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-        Statement statement1 = connection.createStatement();
         PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM vinyl WHERE name=?");
-        preparedStatement.setString(1, update.getMessage().getText());
+        preparedStatement.setString(1, message.getText());
         System.out.println(preparedStatement);
+        String result = "";
         ResultSet resultSet1 = preparedStatement.executeQuery();
-        System.out.println(resultSet1.getString("description"));
-        return resultSet1.getString("description");
+        while (resultSet1.next()){
+            result = "Описание: " + resultSet1.getString("description")
+                    + ", стоимость: "
+                    + resultSet1.getString("cost")
+                    + ", год: "
+                    + resultSet1.getString("year")
+                    + ", лейбл: "
+                    + resultSet1.getString("lable");
+        }
+        System.out.println(result);
+        return result;
     }
 
     private void addVinyl(String text) throws SQLException {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-        String[] splitted = text.split(",");
-
+        String[] splitted = text.split(", ");
+        Statement statement = connection.createStatement();
+        statement.executeUpdate("INSERT INTO vinyl (name, description, cost, year, lable) VALUES('" + splitted[0] + "','"
+                + splitted[1] + "','"
+                + Integer.valueOf(splitted[2]) + "','"
+                + Integer.valueOf(splitted[3]) + "','"
+                + splitted[4] + "'");
     }
-
 
     @Override
     public String getBotToken() {
