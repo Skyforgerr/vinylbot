@@ -64,7 +64,6 @@ public class VinylBot extends TelegramLongPollingBot {
                 states.remove(chatId);
             }else if (states.get(chatId).equals("add")){
                 addVinyl(message.getText(), message);
-                chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Новая пластинка добавлена" + "');");
                 states.remove(chatId);
             }
         }else{
@@ -112,6 +111,7 @@ public class VinylBot extends TelegramLongPollingBot {
                     + Integer.valueOf(splitted[4]) + "','"
                     + splitted[5] + "');");
             execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Новая пластинка добавлена").build());
+            statement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Новая пластинка добавлена" + "');");
         }
     }
 
