@@ -1,7 +1,5 @@
 package com.shimadsy.bot;
 
-import com.shimadsy.bot.entity.Vinyl;
-
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +32,7 @@ public class VinylBot extends TelegramLongPollingBot {
             } catch (TelegramApiException | SQLException e) {
                 e.printStackTrace();
             }
-        }	
+        }
     }
     
     private void handleMessage(Message message) throws TelegramApiException, SQLException {
@@ -44,6 +42,8 @@ public class VinylBot extends TelegramLongPollingBot {
             if (commandEntity.isPresent()){
                 String command = message.getText().substring(commandEntity.get().getOffset(), commandEntity.get().getLength());
                 Long chatId = message.getChatId();
+                Statement chatStatement = connection.createStatement();
+                chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + chatId + "', '" + message.getText() + "');");
 
                 if (command.equals("/get_vinyls")){
                     Statement statement = connection.createStatement();
@@ -62,13 +62,7 @@ public class VinylBot extends TelegramLongPollingBot {
                 }else if(states.containsKey(chatId)){
                     Update update = new Update();
                     if (states.get(chatId).equals("info")){
-                        Statement statement1 = connection.createStatement();
-                        PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM vinyl WHERE name=?");
-                        preparedStatement.setString(1, update.getMessage().getText());
-                        System.out.println(preparedStatement);
-                        ResultSet resultSet1 = preparedStatement.executeQuery();
-                        System.out.println(resultSet1);
-                        execute(SendMessage.builder().chatId(message.getChatId().toString()).text(String.valueOf(resultSet1)).build());
+                        execute(SendMessage.builder().chatId(message.getChatId().toString()).text(searchForVinyl(update.getMessage().getText())).build());
                         states.remove(chatId);
                     }else if (states.get(chatId).equals("add")){
                         addVinyl(update.getMessage().getText());
@@ -81,11 +75,22 @@ public class VinylBot extends TelegramLongPollingBot {
             }
         }
     }
+    public String searchForVinyl(String name) throws SQLException {
+        Update update = new Update();
+        Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        Statement statement1 = connection.createStatement();
+        PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM vinyl WHERE name=?");
+        preparedStatement.setString(1, update.getMessage().getText());
+        System.out.println(preparedStatement);
+        ResultSet resultSet1 = preparedStatement.executeQuery();
+        System.out.println(resultSet1.getString("description"));
+        return resultSet1.getString("description");
+    }
 
     private void addVinyl(String text) throws SQLException {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
         String[] splitted = text.split(",");
-        
+
     }
 
 
