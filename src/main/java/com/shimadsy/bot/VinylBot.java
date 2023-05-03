@@ -58,7 +58,7 @@ public class VinylBot extends TelegramLongPollingBot {
         }else if (command.equals("/add_vinyl")) {   //добавление пластинки
             states.put(chatId, "add");
             execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Введите через запятую название, описание, цену, год, лейбл").build());
-            chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Введите через запятую название, описание, цену, год, лейбл" + "');");
+            chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Введите через запятую id, название, описание, цену, год, лейбл" + "');");
         }else if(states.containsKey(chatId)){
             Update update = new Update();
             if (states.get(chatId).equals("info")){
@@ -99,11 +99,11 @@ public class VinylBot extends TelegramLongPollingBot {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
         String[] splitted = text.split(", ");
         Statement statement = connection.createStatement();
-        statement.executeUpdate("INSERT INTO vinyl (name, description, cost, year, lable) VALUES('" + splitted[0] + "','"
-                + splitted[1] + "','"
-                + Integer.valueOf(splitted[2]) + "','"
+        statement.executeUpdate("INSERT INTO vinyl (id, name, description, cost, year, lable) VALUES('" + Integer.valueOf(splitted[0]) + "', '" + splitted[1] + "','"
+                + splitted[2] + "','"
                 + Integer.valueOf(splitted[3]) + "','"
-                + splitted[4] + "'");
+                + Integer.valueOf(splitted[4]) + "','"
+                + splitted[5] + "');");
     }
 
     @Override
