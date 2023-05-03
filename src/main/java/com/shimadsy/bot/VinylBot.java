@@ -83,7 +83,9 @@ public class VinylBot extends TelegramLongPollingBot {
         String result = "";
         ResultSet resultSet1 = preparedStatement.executeQuery();
         while (resultSet1.next()){
-            result = "Описание: " + resultSet1.getString("description")
+            result = "Id: "+ resultSet1.getString("id")
+                    + ", описание: "
+                    + resultSet1.getString("description")
                     + ", стоимость: "
                     + resultSet1.getString("cost")
                     + ", год: "
