@@ -1,19 +1,17 @@
 package com.shimadsy.bot;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import java.util.List;
+import java.util.Map;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class VinylBot extends TelegramLongPollingBot {
     private final String BOT_TOKEN = "6099074254:AAHEDwiAg7taJX3LOdP1USvkQE9-sJsxKRI";
@@ -65,8 +63,7 @@ public class VinylBot extends TelegramLongPollingBot {
                 execute(SendMessage.builder().chatId(message.getChatId().toString()).text(searchForVinyl(message.getText(), message)).build());
                 states.remove(chatId);
             }else if (states.get(chatId).equals("add")){
-                addVinyl(message.getText());
-                execute(SendMessage.builder().chatId(chatId.toString()).text("Новая пластинка добавлена").build());
+                addVinyl(message.getText(), message);
                 chatStatement.executeUpdate("INSERT INTO chat_logs (id, message) VALUES ('" + message.getChatId() + "', '" + "Новая пластинка добавлена" + "');");
                 states.remove(chatId);
             }
@@ -97,15 +94,25 @@ public class VinylBot extends TelegramLongPollingBot {
         return result;
     }
 
-    private void addVinyl(String text) throws SQLException {
+    private void addVinyl(String text, Message message) throws SQLException, TelegramApiException {
         Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        List<String> listOfNames = new ArrayList<>();
         String[] splitted = text.split(", ");
         Statement statement = connection.createStatement();
-        statement.executeUpdate("INSERT INTO vinyl (id, name, description, cost, year, lable) VALUES('" + Integer.valueOf(splitted[0]) + "', '" + splitted[1] + "','"
-                + splitted[2] + "','"
-                + Integer.valueOf(splitted[3]) + "','"
-                + Integer.valueOf(splitted[4]) + "','"
-                + splitted[5] + "');");
+        ResultSet resultSet = statement.executeQuery("SELECT name FROM vinyl");
+        while (resultSet.next()){
+            listOfNames.add(resultSet.getString("name"));
+        }
+        if (listOfNames.contains(splitted[1])){
+            execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Такая пластинка уже есть!").build());
+        }else {
+            statement.executeUpdate("INSERT INTO vinyl (id, name, description, cost, year, lable) VALUES('" + Integer.valueOf(splitted[0]) + "', '" + splitted[1] + "','"
+                    + splitted[2] + "','"
+                    + Integer.valueOf(splitted[3]) + "','"
+                    + Integer.valueOf(splitted[4]) + "','"
+                    + splitted[5] + "');");
+            execute(SendMessage.builder().chatId(message.getChatId().toString()).text("Новая пластинка добавлена").build());
+        }
     }
 
     @Override
